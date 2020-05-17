@@ -71,6 +71,7 @@ parser.add_argument('--rnn-vae', action='store_true', help="Run RNN baseline: se
 
 parser.add_argument('-l', '--latents', type=int, default=6, help="Size of the latent state")
 parser.add_argument('--rec-dims', type=int, default=20, help="Dimensionality of the recognition model (ODE or RNN).")
+parser.add_argument('--experimentID', type=int, default=7, help="Dimensionality of the recognition model (ODE or RNN).")
 
 parser.add_argument('--rec-layers', type=int, default=1, help="Number of layers in ODE func in recognition ODE")
 parser.add_argument('--gen-layers', type=int, default=1, help="Number of layers in ODE func in generative ODE")
@@ -104,12 +105,12 @@ if __name__ == '__main__':
 	experimentID = args.load
 	if experimentID is None:
 		# Make a new experiment ID
-		experimentID = int(SystemRandom().random()*100000)
+		experimentID = args.experimentID #int(SystemRandom().random()*100000)
 	ckpt_path = os.path.join(args.save, "experiment_" + str(experimentID) + '.ckpt')
 
 	start = time.time()
 	print("Sampling dataset of {} training examples".format(args.n))
-	
+
 	input_command = sys.argv
 	ind = [i for i in range(len(input_command)) if input_command[i] == "--load"]
 	if len(ind) == 1:
@@ -142,7 +143,7 @@ if __name__ == '__main__':
 	# Create the model
 	obsrv_std = 0.01
 	if args.dataset == "hopper":
-		obsrv_std = 1e-3 
+		obsrv_std = 1e-3
 
 	obsrv_std = torch.Tensor([obsrv_std]).to(device)
 
@@ -153,10 +154,10 @@ if __name__ == '__main__':
 			print("Poisson process likelihood not implemented for RNN-VAE: ignoring --poisson")
 
 		# Create RNN-VAE model
-		model = RNN_VAE(input_dim, args.latents, 
-			device = device, 
-			rec_dims = args.rec_dims, 
-			concat_mask = True, 
+		model = RNN_VAE(input_dim, args.latents,
+			device = device,
+			rec_dims = args.rec_dims,
+			concat_mask = True,
 			obsrv_std = obsrv_std,
 			z0_prior = z0_prior,
 			use_binary_classif = args.classif,
@@ -177,7 +178,7 @@ if __name__ == '__main__':
 		if args.extrap:
 			raise Exception("Extrapolation for standard RNN not implemented")
 		# Create RNN model
-		model = Classic_RNN(input_dim, args.latents, device, 
+		model = Classic_RNN(input_dim, args.latents, device,
 			concat_mask = True, obsrv_std = obsrv_std,
 			n_units = args.units,
 			use_binary_classif = args.classif,
@@ -191,26 +192,26 @@ if __name__ == '__main__':
 	elif args.ode_rnn:
 		# Create ODE-GRU model
 		n_ode_gru_dims = args.latents
-				
+
 		if args.poisson:
 			print("Poisson process likelihood not implemented for ODE-RNN: ignoring --poisson")
 
 		if args.extrap:
 			raise Exception("Extrapolation for ODE-RNN not implemented")
 
-		ode_func_net = utils.create_net(n_ode_gru_dims, n_ode_gru_dims, 
+		ode_func_net = utils.create_net(n_ode_gru_dims, n_ode_gru_dims,
 			n_layers = args.rec_layers, n_units = args.units, nonlinear = nn.Tanh)
 
 		rec_ode_func = ODEFunc(
-			input_dim = input_dim, 
+			input_dim = input_dim,
 			latent_dim = n_ode_gru_dims,
 			ode_func_net = ode_func_net,
 			device = device).to(device)
 
-		z0_diffeq_solver = DiffeqSolver(input_dim, rec_ode_func, "euler", args.latents, 
+		z0_diffeq_solver = DiffeqSolver(input_dim, rec_ode_func, "euler", args.latents,
 			odeint_rtol = 1e-3, odeint_atol = 1e-4, device = device)
-	
-		model = ODE_RNN(input_dim, n_ode_gru_dims, device = device, 
+
+		model = ODE_RNN(input_dim, n_ode_gru_dims, device = device,
 			z0_diffeq_solver = z0_diffeq_solver, n_gru_units = args.gru_units,
 			concat_mask = True, obsrv_std = obsrv_std,
 			use_binary_classif = args.classif,
@@ -219,7 +220,7 @@ if __name__ == '__main__':
 			train_classif_w_reconstr = (args.dataset == "physionet")
 			).to(device)
 	elif args.latent_ode:
-		model = create_LatentODE_model(args, input_dim, z0_prior, obsrv_std, device, 
+		model = create_LatentODE_model(args, input_dim, z0_prior, obsrv_std, device,
 			classif_per_tp = classif_per_tp,
 			n_labels = n_labels)
 	else:
@@ -231,7 +232,7 @@ if __name__ == '__main__':
 		viz = Visualizations(device)
 
 	##################################################################
-	
+
 	#Load checkpoint and evaluate the model
 	if args.load is not None:
 		utils.get_ckpt_model(ckpt_path, model, device)
@@ -269,7 +270,7 @@ if __name__ == '__main__':
 		if itr % (n_iters_to_viz * num_batches) == 0:
 			with torch.no_grad():
 
-				test_res = compute_loss_all_batches(model, 
+				test_res = compute_loss_all_batches(model,
 					data_obj["test_dataloader"], args,
 					n_batches = data_obj["n_test_batches"],
 					experimentID = experimentID,
@@ -277,16 +278,16 @@ if __name__ == '__main__':
 					n_traj_samples = 3, kl_coef = kl_coef)
 
 				message = 'Epoch {:04d} [Test seq (cond on sampled tp)] | Loss {:.6f} | Likelihood {:.6f} | KL fp {:.4f} | FP STD {:.4f}|'.format(
-					itr//num_batches, 
-					test_res["loss"].detach(), test_res["likelihood"].detach(), 
+					itr//num_batches,
+					test_res["loss"].detach(), test_res["likelihood"].detach(),
 					test_res["kl_first_p"], test_res["std_first_p"])
-		 	
+
 				logger.info("Experiment " + str(experimentID))
 				logger.info(message)
 				logger.info("KL coef: {}".format(kl_coef))
 				logger.info("Train loss (one batch): {}".format(train_res["loss"].detach()))
 				logger.info("Train CE loss (one batch): {}".format(train_res["ce_loss"].detach()))
-				
+
 				if "auc" in test_res:
 					logger.info("Classification AUC (TEST): {:.4f}".format(test_res["auc"]))
 
@@ -319,7 +320,7 @@ if __name__ == '__main__':
 					print("plotting....")
 					if isinstance(model, LatentODE) and (args.dataset == "periodic"): #and not args.classic_rnn and not args.ode_rnn:
 						plot_id = itr // num_batches // n_iters_to_viz
-						viz.draw_all_plots_one_dim(test_dict, model, 
+						viz.draw_all_plots_one_dim(test_dict, model,
 							plot_name = file_name + "_" + str(experimentID) + "_{:03d}".format(plot_id) + ".png",
 						 	experimentID = experimentID, save=True)
 						plt.pause(0.01)

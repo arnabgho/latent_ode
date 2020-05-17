@@ -54,7 +54,7 @@ def init_fonts(main_font_size = LARGE_SIZE):
 	plt.rc('figure', titlesize=main_font_size)  # fontsize of the figure title
 
 
-def plot_trajectories(ax, traj, time_steps, min_y = None, max_y = None, title = "", 
+def plot_trajectories(ax, traj, time_steps, min_y = None, max_y = None, title = "",
 		add_to_plot = False, label = None, add_legend = False, dim_to_show = 0,
 		linestyle = '-', marker = 'o', mask = None, color = None, linewidth = 1):
 	# expected shape of traj: [n_traj, n_timesteps, n_dims]
@@ -64,7 +64,7 @@ def plot_trajectories(ax, traj, time_steps, min_y = None, max_y = None, title = 
 	ax.set_title(title)
 	ax.set_xlabel('Time')
 	ax.set_ylabel('x')
-	
+
 	if min_y is not None:
 		ax.set_ylim(bottom = min_y)
 
@@ -84,7 +84,7 @@ def plot_trajectories(ax, traj, time_steps, min_y = None, max_y = None, title = 
 		ax.legend()
 
 
-def plot_std(ax, traj, traj_std, time_steps, min_y = None, max_y = None, title = "", 
+def plot_std(ax, traj, traj_std, time_steps, min_y = None, max_y = None, title = "",
 	add_to_plot = False, label = None, alpha=0.2, color = None):
 
 	# take only the first (and only?) dimension
@@ -92,7 +92,7 @@ def plot_std(ax, traj, traj_std, time_steps, min_y = None, max_y = None, title =
 	mean_plus_std = (traj + traj_std).cpu().numpy()[:, :, 0]
 
 	for i in range(traj.size()[0]):
-		ax.fill_between(time_steps.cpu().numpy(), mean_minus_std[i], mean_plus_std[i], 
+		ax.fill_between(time_steps.cpu().numpy(), mean_minus_std[i], mean_plus_std[i],
 			alpha=alpha, color = color)
 
 
@@ -105,7 +105,7 @@ def plot_vector_field(ax, odefunc, latent_dim, device):
 	zs = torch.from_numpy(np.stack([x, y], -1).reshape(K * K, 2)).to(device, torch.float32)
 	if latent_dim > 2:
 		# Plots dimensions 0 and 2
-		zs = torch.cat((zs, torch.zeros(K * K, latent_dim-2)), 1)
+		zs = torch.cat((zs, torch.zeros(K * K, latent_dim-2).to(device) ), 1)
 	dydt = odefunc(0, zs)
 	dydt = -dydt.cpu().detach().numpy()
 	if latent_dim > 2:
@@ -131,7 +131,7 @@ def plot_vector_field(ax, odefunc, latent_dim, device):
 def get_meshgrid(npts, int_y1, int_y2):
 	min_y1, max_y1 = int_y1
 	min_y2, max_y2 = int_y2
-	
+
 	y1_grid = np.linspace(min_y1, max_y1, npts)
 	y2_grid = np.linspace(min_y2, max_y2, npts)
 
@@ -160,7 +160,7 @@ class Visualizations():
 
 	def init_visualization(self):
 		self.fig = plt.figure(figsize=(12, 7), facecolor='white')
-		
+
 		self.ax_traj = []
 		for i in range(1,4):
 			self.ax_traj.append(self.fig.add_subplot(2,3,i, frameon=False))
@@ -186,9 +186,9 @@ class Visualizations():
 		ax.set_xlim(xlim)
 		ax.set_ylim(ylim)
 
-	def draw_one_density_plot(self, ax, model, data_dict, traj_id, 
+	def draw_one_density_plot(self, ax, model, data_dict, traj_id,
 		multiply_by_poisson = False):
-		
+
 		scale = 5
 		cmap = add_white(plt.cm.get_cmap('Blues', 9)) # plt.cm.BuGn_r
 		cmap2 = add_white(plt.cm.get_cmap('Reds', 9)) # plt.cm.BuGn_r
@@ -219,10 +219,10 @@ class Visualizations():
 
 		# Shape of sol_y [n_traj_samples, n_samples, n_timepoints, n_latents]
 		sol_y = model.diffeq_solver(z0_grid_aug.unsqueeze(0), time_steps)
-		
+
 		if model.use_poisson_proc:
 			sol_y, log_lambda_y, int_lambda, _ = model.diffeq_solver.ode_func.extract_poisson_rate(sol_y)
-			
+
 			assert(torch.sum(int_lambda[:,:,0,:]) == 0.)
 			assert(torch.sum(int_lambda[0,0,-1,:] <= 0) == 0.)
 
@@ -241,13 +241,13 @@ class Visualizations():
 		prior_density_grid = model.z0_prior.log_prob(z0_grid.unsqueeze(0)).squeeze(0)
 		# Sum the density over two dimensions
 		prior_density_grid = torch.sum(prior_density_grid, -1)
-		
+
 		# =================================================
 		# Plot: p(x | y(t0))
 
-		masked_gaussian_log_density_grid = masked_gaussian_log_density(pred_x, 
+		masked_gaussian_log_density_grid = masked_gaussian_log_density(pred_x,
 			one_traj.repeat(npts**2,1,1).unsqueeze(0),
-			mask = mask_one_traj, 
+			mask = mask_one_traj,
 			obsrv_std = model.obsrv_std).squeeze(-1)
 
 		# Plot p(t | y(t0))
@@ -255,12 +255,12 @@ class Visualizations():
 			poisson_info = {}
 			poisson_info["int_lambda"] = int_lambda[:,:,-1,:]
 			poisson_info["log_lambda_y"] = log_lambda_y
-	
+
 			poisson_log_density_grid = compute_poisson_proc_likelihood(
 				one_traj.repeat(npts**2,1,1).unsqueeze(0),
 				pred_x, poisson_info, mask = mask_one_traj)
 			poisson_log_density_grid = poisson_log_density_grid.squeeze(0)
-			
+
 		# =================================================
 		# Plot: p(x , y(t0))
 
@@ -302,7 +302,7 @@ class Visualizations():
 		density_grid = density_grid.cpu().numpy()
 
 		ax.contourf(xx, yy, density_grid, cmap=cmap2, alpha=0.3)
-	
+
 
 
 	def draw_all_plots_one_dim(self, data_dict, model,
@@ -311,7 +311,7 @@ class Visualizations():
 		data =  data_dict["data_to_predict"]
 		time_steps = data_dict["tp_to_predict"]
 		mask = data_dict["mask_predicted_data"]
-		
+
 		observed_data =  data_dict["observed_data"]
 		observed_time_steps = data_dict["observed_tp"]
 		observed_mask = data_dict["observed_mask"]
@@ -323,7 +323,7 @@ class Visualizations():
 			# sample at the original time points
 			time_steps_to_predict = utils.linspace_vector(time_steps[0], time_steps[-1], 100).to(device)
 
-		reconstructions, info = model.get_reconstruction(time_steps_to_predict, 
+		reconstructions, info = model.get_reconstruction(time_steps_to_predict,
 			observed_data, observed_time_steps, mask = observed_mask, n_traj_samples = 10)
 
 		n_traj_to_show = 3
@@ -347,23 +347,23 @@ class Visualizations():
 		cmap = plt.cm.get_cmap('Set1')
 		for traj_id in range(3):
 			# Plot observations
-			plot_trajectories(self.ax_traj[traj_id], 
-				data_for_plotting[traj_id].unsqueeze(0), observed_time_steps, 
+			plot_trajectories(self.ax_traj[traj_id],
+				data_for_plotting[traj_id].unsqueeze(0), observed_time_steps,
 				mask = mask_for_plotting[traj_id].unsqueeze(0),
-				min_y = min_y, max_y = max_y, #title="True trajectories", 
+				min_y = min_y, max_y = max_y, #title="True trajectories",
 				marker = 'o', linestyle='', dim_to_show = dim_to_show,
 				color = cmap(2))
 			# Plot reconstructions
 			plot_trajectories(self.ax_traj[traj_id],
-				reconstructions_for_plotting[traj_id].unsqueeze(0), time_steps_to_predict, 
+				reconstructions_for_plotting[traj_id].unsqueeze(0), time_steps_to_predict,
 				min_y = min_y, max_y = max_y, title="Sample {} (data space)".format(traj_id), dim_to_show = dim_to_show,
 				add_to_plot = True, marker = '', color = cmap(3), linewidth = 3)
 			# Plot variance estimated over multiple samples from approx posterior
-			plot_std(self.ax_traj[traj_id], 
-				reconstructions_for_plotting[traj_id].unsqueeze(0), reconstr_std[traj_id].unsqueeze(0), 
+			plot_std(self.ax_traj[traj_id],
+				reconstructions_for_plotting[traj_id].unsqueeze(0), reconstr_std[traj_id].unsqueeze(0),
 				time_steps_to_predict, alpha=0.5, color = cmap(3))
 			self.set_plot_lims(self.ax_traj[traj_id], "traj_" + str(traj_id))
-			
+
 			# Plot true posterior and approximate posterior
 			# self.draw_one_density_plot(self.ax_density[traj_id],
 			# 	model, data_dict, traj_id = traj_id,
@@ -375,17 +375,17 @@ class Visualizations():
 		# one_traj = data_for_plotting[:1]
 		# first_point = one_traj[:,0]
 
-		# samples_same_traj, _ = model.get_reconstruction(time_steps_to_predict, 
+		# samples_same_traj, _ = model.get_reconstruction(time_steps_to_predict,
 		# 	observed_data[:1], observed_time_steps, mask = observed_mask[:1], n_traj_samples = 5)
 		# samples_same_traj = samples_same_traj.squeeze(1)
-		
+
 		# plot_trajectories(self.ax_samples_same_traj, samples_same_traj, time_steps_to_predict, marker = '')
-		# plot_trajectories(self.ax_samples_same_traj, one_traj, time_steps, linestyle = "", 
+		# plot_trajectories(self.ax_samples_same_traj, one_traj, time_steps, linestyle = "",
 		# 	label = "True traj", add_to_plot = True, title="Reconstructions for the same trajectory (data space)")
 
 		############################################
 		# Plot trajectories from prior
-		
+
 		if isinstance(model, LatentODE):
 			torch.manual_seed(1991)
 			np.random.seed(1991)
@@ -394,7 +394,7 @@ class Visualizations():
 			# Since in this case n_traj = 1, n_traj_samples -- requested number of samples from the prior, squeeze n_traj dimension
 			traj_from_prior = traj_from_prior.squeeze(1)
 
-			plot_trajectories(self.ax_traj_from_prior, traj_from_prior, time_steps_to_predict, 
+			plot_trajectories(self.ax_traj_from_prior, traj_from_prior, time_steps_to_predict,
 				marker = '', linewidth = 3)
 			self.ax_traj_from_prior.set_title("Samples from prior (data space)", pad = 20)
 			#self.set_plot_lims(self.ax_traj_from_prior, "traj_from_prior")
@@ -435,12 +435,12 @@ class Visualizations():
 		custom_labels = {}
 		for i in range(n_latent_dims):
 			col = cmap(i)
-			plot_trajectories(self.ax_latent_traj, latent_traj, time_steps_to_predict, 
-				title="Latent trajectories z(t) (latent space)", dim_to_show = i, color = col, 
+			plot_trajectories(self.ax_latent_traj, latent_traj, time_steps_to_predict,
+				title="Latent trajectories z(t) (latent space)", dim_to_show = i, color = col,
 				marker = '', add_to_plot = True,
 				linewidth = 3)
 			custom_labels['dim ' + str(i)] = Line2D([0], [0], color=col)
-		
+
 		self.ax_latent_traj.set_ylabel("z")
 		self.ax_latent_traj.set_title("Latent trajectories z(t) (latent space)", pad = 20)
 		self.ax_latent_traj.legend(custom_labels.values(), custom_labels.keys(), loc = 'lower left')
