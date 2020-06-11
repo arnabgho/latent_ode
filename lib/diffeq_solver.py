@@ -44,10 +44,10 @@ class DiffeqSolver(nn.Module):
         #print(time_steps_to_predict)
         if time_steps_to_predict.size()==2:
             pred_y = odeint(self.ode_func, first_point, time_steps_to_predict,
-                        rtol=self.odeint_rtol, atol=self.odeint_atol, method=self.ode_method) #,mode='train')
+                        rtol=self.odeint_rtol, atol=self.odeint_atol, method=self.ode_method,min_length=0.005) #,mode='train')
         else:
             pred_y = odeint(self.ode_func, first_point, time_steps_to_predict,
-                        rtol=self.odeint_rtol, atol=self.odeint_atol, method=self.ode_method) # ,mode='test')
+                        rtol=self.odeint_rtol, atol=self.odeint_atol, method=self.ode_method,min_length=0.005) # ,mode='test')
         pred_y = pred_y.permute(1, 2, 0, 3)
 
         assert(torch.mean(pred_y[:, :, 0, :] - first_point) < 0.001)
